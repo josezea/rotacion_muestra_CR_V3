@@ -1,0 +1,149 @@
+---
+title: "Asignación Tamaño muestra 15 paneles"
+author: "José Fernando Zea"
+date: "2024-11-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+Cargar los paquetes:
+
+```{r}
+library(dplyr)
+library(writexl)
+library(tictoc)
+```
+
+Cargamos los scripts necesarios:
+
+
+```{r}
+setwd("scripts")
+
+# EJecución de insumos necesarios paneles rotativos
+#source("utils_minimal_block500.R")
+#source("utils_row_500.R")
+#source("utils_test_contigous500.R")
+#source("panel500.R")
+
+# Nos traemos los siguientes dataframes:
+# df_paneles1raFila_HijosNoRefresco
+# df_panelesRefresco_Hijos
+# df_panelesSustituidos_Hijos
+#source("lectura_insumos_esquema_rotacion.R")
+
+
+# Script para redistribuir UPMs en los paneles 
+# Se respeta el tamaño de las UPMs a repartir y los paneles quedan con un número enteros de UPMs)
+source("redistribution_PSU_sample.R")
+
+# Script necesario para generar números de Pareto
+source("generate_random.R")
+```
+
+
+Leemos los datos necesarios para seleccionar la muestra de paneles
+
+```{r}
+setwd("output/1.LecturaPreprocesamientoMarco_InfoTam")
+df_asignacionMuestra <- readRDS("df_asignacionMuestra_reducido.Rds")
+df_marco <- readRDS("df_marco_reducido.Rds")
+```
+
+
+
+# Tamaño de muestra de cada uno de los paneles pivotales (primera fila) que no son de refresco
+
+Aplicamos la función de distribución sobre cada uno de los estratos y lo agregamos al dataframe, esta función permite calcular el número de UPMs que debe contener cada panel, como no necesariamente el número de UPMs por estrato da un número entero al dividirlo por 15 por eso se requiere realizar una asignación entera:
+
+
+```{r}
+df_asignacionMuestra <- df_asignacionMuestra %>% arrange(estrato)
+vctr_estratos <- unique(df_asignacionMuestra$estrato) %>% sort()
+
+num_estratos <- nrow(df_asignacionMuestra)
+lst_configuracionPanles <- vector(mode = "list", length = num_estratos)
+for(i in 1:num_estratos){
+  temp_tamp_panelesA <- redistribution_PSU_sample(df_asignacionMuestra$nI_h[i], 15)[-1] 
+  temp_tamp_panelesB <- matrix(temp_tamp_panelesA, nrow = 1)  %>% as.data.frame()
+  names(temp_tamp_panelesB) <- c("num_panelesGrandes", "Num_panelesPequenos", "NumPSU_panelesGrandes", 
+                                 "NumPSU_panelesPequenos")
+  lst_configuracionPanles[[i]] <- temp_tamp_panelesB
+}
+df_configuracionPanles <- bind_rows(lst_configuracionPanles)
+df_configuracionPanles$NumPSU_panelesGrandes <- ifelse(df_configuracionPanles$num_panelesGrandes == 0,
+                                                       0, df_configuracionPanles$NumPSU_panelesGrandes)
+df_asignacionMuestra15paneles_Trimestre <- cbind(df_asignacionMuestra, df_configuracionPanles)
+df_asignacionMuestra15paneles_Trimestre <- df_asignacionMuestra15paneles_Trimestre %>% arrange(estrato)
+```
+
+
+
+estrato	 nI_h	  num_paneles_trim	upmsXPanel	num_panelesGrand	Num_panelesPeque	NumPSU_panelesGran	NumPSU_panelesPeque
+111	     313	    15	              20,87      	13	                2	                 21	                20
+
+
+
+# Selección aleatoria
+
+```{r}
+set.seed(30092024)
+semillas <- sample(1:1000, num_estratos)
+```
+
+
+Seleccionamos en cada estrato las UPM's:
+
+```{r}
+lst_marcoSeleccion <- vector(mode = "list", length = length(vctr_estratos))
+for(i in 1:length(vctr_estratos)){
+  temp_nI_h <- df_asignacionMuestra$nI_h[i]
+  temp_marco <- df_marco %>% filter(estrato == vctr_estratos[i])
+
+    
+  
+  
+     xi_pareto <- generate_random(N = nrow(temp_marco),
+                   seed = semillas[i],
+                   xk = temp_marco$viviendas_preliminares,
+                   Pareto = TRUE,
+                   n = temp_nI_h)$Xi_Pareto
+  
+  temp_marco$aleatorio_pareto <- xi_pareto
+  temp_marco <- temp_marco %>% arrange(aleatorio_pareto)
+  lst_marcoSeleccion[[i]] <- temp_marco
+  
+}
+rm(temp_marco)
+rm(temp_nI_h)
+
+df_numerosPareto <- bind_rows(lst_marcoSeleccion)
+df_numerosPareto <- df_numerosPareto %>% arrange(estrato, upm)
+# df_marcoSeleccion
+```
+
+
+
+Guardamos el tamaño de muestra que tendrá cada panel (no todos el mismo tamaño) y los números de Pareto:
+
+
+```{r}
+setwd("output/Resultados/2.AsignacionTamMuestra15Paneles_NumeroAleaPareto")
+saveRDS(df_numerosPareto, "df_numerosPareto.Rds")
+write_xlsx(df_numerosPareto, "df_numerosPareto.xlsx")
+
+# df_asignacionMuestra
+saveRDS(df_asignacionMuestra15paneles_Trimestre, "df_asignacionMuestra15paneles_Trimestre.Rds")
+write_xlsx(df_asignacionMuestra15paneles_Trimestre, "df_asignacionMuestra15paneles_Trimestre.xlsx")
+```
+
+```{r}
+
+```
+

@@ -1,0 +1,342 @@
+---
+title: "Descriptivos Paneles"
+author: "José Fernando Zea"
+date: "2024-11-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(dplyr)
+```
+
+
+
+```{r}
+setwd("scripts")
+source("utils_minimal_block500.R")
+source("utils_row_500.R")
+source("utils_test_contigous500.R")
+source("panel500.R")
+
+# Nos traemos los siguientes dataframes:
+# df_paneles1raFila_HijosNoRefresco
+# df_panelesRefresco_Hijos
+# df_panelesSustituidos_Hijos
+source("lectura_insumos_esquema_rotacion.R")
+```
+```{r}
+setwd("output/Resultados/5.AsignacionUPMaPanelesPrincipalesRefuerzo")
+df_entregaMuestraCostaRica <- readRDS("EntregaMuestraCostaRica6oTrimestres.Rds")
+```
+
+```{r}
+vctr_estratos <- unique(df_entregaMuestraCostaRica$estrato) %>% sort()
+```
+
+
+
+Conteo de paneles de Refresco:
+
+```{r}
+descripcion_paneles <- df_entregaMuestraCostaRica %>% group_by(indicadora_panel_pivotal) %>% 
+  count() %>% ungroup() %>% 
+  slice(-3)
+descripcion_paneles <- rbind(descripcion_paneles, data.frame(indicadora_panel_pivotal = "Total", n = sum(descripcion_paneles$n)))
+```
+
+
+```{r}
+setwd("output/Resultados/6.Descriptivos/")
+write_xlsx(descripcion_paneles, "1.descripcion_paneles.xlsx")
+```
+
+Cuantas UPMs tiene cada Panel dentro de cada estrato:
+
+
+```{r}
+lst_tamPanelesEstrato <- vector(mode = "list", length = length(vctr_estratos))
+for(i in 1:length(vctr_estratos)){
+  temp_estratos <- df_entregaMuestraCostaRica %>% filter(estrato == vctr_estratos[i])
+  temp_estratos <- temp_estratos %>% group_by(panel) %>% summarise(cuenta = n())
+  temp_estratos$estrato <- vctr_estratos[i]
+  temp_estratos <- temp_estratos %>% relocate(estrato)
+  lst_tamPanelesEstrato[[i]] <- temp_estratos
+}
+names(lst_tamPanelesEstrato) <- vctr_estratos
+```
+
+```{r}
+setwd("output/Resultados/6.Descriptivos/")
+write_xlsx(lst_tamPanelesEstrato, "2.Num_UPMSEnPanel_estrato.xlsx")
+```
+
+
+
+```{r}
+consulta_numUPMSXPanel <- df_entregaMuestraCostaRica %>% group_by(estrato, panel) %>% 
+  summarise(n_UPMsXpanel = n())
+```
+
+
+```{r}
+setwd("output/Resultados/6.Descriptivos/")
+write_xlsx(consulta_numUPMSXPanel, "2.Num_UPMSEnPanel_estrato_Largo.xlsx")
+```
+
+
+
+
+```{r}
+vctr_numerico <- rep(NA_integer_, nrow(Paneles))
+for(i in 1:nrow(Paneles)){
+vctr_numerico[i] <- df_entregaMuestraCostaRica %>% filter(panel %in% as.character(Paneles[i,])) %>% nrow()
+}
+df_comprobacionTamanoTrimestre <- data.frame(Trimestre = 1:60, n_h = vctr_numerico)
+```
+
+
+```{r}
+setwd("output/Resultados/6.Descriptivos/")
+write_xlsx(df_comprobacionTamanoTrimestre, "3a.TamMuestra_Trimestre.xlsx")
+```
+
+
+
+
+```{r}
+matriz_estratoTrimestre <- matrix(0L, length(vctr_estratos), nrow(Paneles))
+for(i in 1:length(vctr_estratos)){
+  for(j in 1:nrow(Paneles)){
+  
+  matriz_estratoTrimestre[i,j] <-   df_entregaMuestraCostaRica %>% 
+    filter(estrato == vctr_estratos[i] & panel %in% as.character(Paneles[j,])) %>% nrow()
+  }
+}
+matriz_estratoTrimestre <- t(matriz_estratoTrimestre) %>% as.data.frame()
+colnames(matriz_estratoTrimestre) <- vctr_estratos
+row.names(matriz_estratoTrimestre) <- paste0("T", 1:60)
+
+```
+
+
+```{r}
+setwd("output/Resultados/6.Descriptivos/")
+write_xlsx(matriz_estratoTrimestre, "3b.MuestraUPMS_TrimestrePanelXEstrato.xlsx")
+```
+
+
+
+Muestra UPMS enc ada estrato por trimestre:
+
+```{r}
+lst_muestraXTrimestre <- vector(mode = "list", length = nrow(Paneles))
+for(i in 1:nrow(Paneles)){
+  temp_upmsXTrimestre <- df_entregaMuestraCostaRica %>% filter(panel %in% as.character(Paneles[i,]))
+    lst_muestraXTrimestre[[i]] <- temp_upmsXTrimestre %>% select(estrato, upm, panel) %>% 
+      arrange(estrato, panel, upm)
+} 
+names(lst_muestraXTrimestre) <- paste0("T", 1:60)
+```
+
+
+```{r}
+setwd("output/Resultados/6.Descriptivos/")
+write_xlsx(lst_muestraXTrimestre, "3c.TamMuestraUPMS_TrimestrePanelXEstrato.xlsx")
+```
+
+
+
+
+
+# Descriptivos solicitados Costa Rica
+
+Creación del mes
+
+
+```{r}
+#mes1 <- c("A01",	"B01",	"C01",	"D01",	"E01")
+#mes2 <- c("F01", "G01", "H01", "I01", "J01")
+#mes2 <- c("K01",	"L01",	"M01",	"N01",	"O01")
+```
+
+
+
+```{r}
+anno <- stringr::str_pad(as.character(rep(1:15, each = 4)), 
+                         width = 2, side = "left", pad = "0")
+
+Paneles_df <- as.data.frame(Paneles)
+Paneles_df$anno <- anno
+Paneles_df$anno <- anno
+
+trimestre <- rep(1:4, 15)
+Paneles_df$trimestre <- trimestre
+```
+
+
+Arreglo primer mes de cada trimestre
+
+
+```{r}
+Paneles_mes1CadaTrimestre <- Paneles_df[,c(1:5, 16, 17)]
+Paneles_mes1CadaTrimestre$mes <- ifelse(Paneles_mes1CadaTrimestre$trimestre == 1, "01",
+                                      ifelse(Paneles_mes1CadaTrimestre$trimestre == 2, "04",
+                                  ifelse(Paneles_mes1CadaTrimestre$trimestre == 3, "07",
+                                  ifelse(Paneles_mes1CadaTrimestre$trimestre == 4, "10", NA_character_))))
+
+Paneles_mes1CadaTrimestre$anno_mes <- paste0("A", Paneles_mes1CadaTrimestre$anno, "M", Paneles_mes1CadaTrimestre$mes)
+
+
+
+Paneles_mes2CadaTrimestre <- Paneles_df[,c(6:10, 16, 17)]
+Paneles_mes2CadaTrimestre$mes <- ifelse(Paneles_mes2CadaTrimestre$trimestre == 1, "02",
+                                      ifelse(Paneles_mes2CadaTrimestre$trimestre == 2, "05",
+                                  ifelse(Paneles_mes2CadaTrimestre$trimestre == 3, "08",
+                                  ifelse(Paneles_mes2CadaTrimestre$trimestre == 4, "11", NA_character_))))
+
+Paneles_mes2CadaTrimestre$anno_mes <- paste0("A", Paneles_mes2CadaTrimestre$anno, "M", Paneles_mes2CadaTrimestre$mes)
+
+
+Paneles_mes3CadaTrimestre <- Paneles_df[,c(11:15, 16, 17)]
+Paneles_mes3CadaTrimestre$mes <- ifelse(Paneles_mes3CadaTrimestre$trimestre == 1, "03",
+                                      ifelse(Paneles_mes3CadaTrimestre$trimestre == 2, "06",
+                                  ifelse(Paneles_mes3CadaTrimestre$trimestre == 3, "09",
+                                  ifelse(Paneles_mes3CadaTrimestre$trimestre == 4, "12", NA_character_))))
+
+
+Paneles_mes3CadaTrimestre$anno_mes <- paste0("A", Paneles_mes3CadaTrimestre$anno, "M", Paneles_mes3CadaTrimestre$mes)
+```
+
+
+Unificaciónd data.frame:
+
+```{r}
+temp1 <- Paneles_mes1CadaTrimestre[,c(1,9)]
+names(temp1) <- "month1"
+
+temp2 <- Paneles_mes1CadaTrimestre[,c(2,9)]
+names(temp2) <- "month1"
+
+temp3 <- Paneles_mes1CadaTrimestre[,c(3,9)]
+names(temp3) <- "month1"
+
+temp4 <- Paneles_mes1CadaTrimestre[,c(4,9)]
+names(temp4) <- "month1"
+
+temp5 <- Paneles_mes1CadaTrimestre[,c(5,9)]
+names(temp5) <- "month1"
+Paneles1 <- rbind(temp1, temp2, temp3, temp4, temp5)
+```
+
+
+```{r}
+temp1 <- Paneles_mes2CadaTrimestre[,c(1,9)]
+names(temp1) <- "month2"
+
+temp2 <- Paneles_mes2CadaTrimestre[,c(2,9)]
+names(temp2) <- "month2"
+
+temp3 <- Paneles_mes2CadaTrimestre[,c(3,9)]
+names(temp3) <- "month2"
+
+temp4 <- Paneles_mes2CadaTrimestre[,c(4,9)]
+names(temp4) <- "month2"
+
+temp5 <- Paneles_mes2CadaTrimestre[,c(5,9)]
+names(temp5) <- "month2"
+
+
+Paneles2 <- rbind(temp1, temp2, temp3, temp4, temp5)
+```
+
+
+```{r}
+temp1 <- Paneles_mes3CadaTrimestre[,c(1,9)]
+names(temp1) <- "month3"
+
+temp2 <- Paneles_mes3CadaTrimestre[,c(2,9)]
+names(temp2) <- "month3"
+
+temp3 <- Paneles_mes3CadaTrimestre[,c(3,9)]
+names(temp3) <- "month3"
+
+temp4 <- Paneles_mes3CadaTrimestre[,c(4,9)]
+names(temp4) <- "month3"
+
+temp5 <- Paneles_mes3CadaTrimestre[,c(5,9)]
+names(temp5) <- "month3"
+
+
+Paneles3 <- rbind(temp1, temp2, temp3, temp4, temp5)
+```
+
+
+
+```{r}
+names(Paneles1)[1] <- "panel"
+names(Paneles2)[1] <- "panel"
+names(Paneles3)[1] <- "panel"
+
+names(Paneles1)[2] <- "year_month"
+names(Paneles2)[2] <- "year_month"
+names(Paneles3)[2] <- "year_month"
+
+PanelesLong <- rbind(Paneles1, Paneles2, Paneles3)
+```
+
+
+
+
+```{r}
+consultaXmes <- df_entregaMuestraCostaRica %>% select(estrato, panel, upm) %>% left_join(PanelesLong)
+```
+
+
+
+```{r}
+ResumenConsultaXmes <- consultaXmes %>% group_by(estrato, panel, year_month) %>% summarise(n_UPMS = n_distinct(upm)) %>% arrange(estrato, panel, year_month)
+```
+
+Reestructurar
+Filas: 30 estratos X 192 paneles
+Columnas: 15 años X 4 Trimestres X 3 meses: 180
+
+```{r}
+MatrizMensual <- reshape2::dcast(data = ResumenConsultaXmes, estrato + panel ~ year_month,
+                     value.var = "n_UPMS", FUN = mean, na.rm = T)
+```
+
+
+
+```{r}
+setwd("output/Resultados/6.Descriptivos/")
+write_xlsx(MatrizMensual, "4.MatrizEstrato_panelMes.xlsx")
+write_xlsx(ResumenConsultaXmes, "4.ResumenEstrato_panelMes.xlsx")
+```
+
+
+
+```{r}
+ResumenXMes <- MatrizMensual %>%
+  group_by(estrato) %>%
+  summarise(across(starts_with("A"), ~ sum(.x, na.rm = TRUE), .names = "sum_{.col}"))
+```
+
+
+
+```{r}
+setwd("output/Resultados/6.Descriptivos/")
+write_xlsx(ResumenXMes, "4.MatrizEstratoMes.xlsx")
+
+```
+
+
+```{r}
+
+```
+

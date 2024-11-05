@@ -1,0 +1,200 @@
+---
+title: "Seleccion Muestra Maestra de UPMs y muestra de refresco"
+author: "José Fernando Zea"
+date: "2024-11-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(dplyr)
+library(writexl)
+```
+
+
+```{r}
+setwd("scripts")
+source("utils_minimal_block500.R")
+source("utils_row_500.R")
+source("utils_test_contigous500.R")
+source("panel500.R")
+
+# Nos traemos los siguientes dataframes:
+# df_paneles1raFila_HijosNoRefresco
+# df_panelesRefresco_Hijos
+# df_panelesSustituidos_Hijos
+source("lectura_insumos_esquema_rotacion.R")
+```
+
+
+Leemos cuales son los paneles pivotales:
+
+```{r}
+df_pivote_noRefresco <- data.frame(panel_pivote = unique(df_paneles1raFila_HijosNoRefresco$panel_pivote))
+df_pivote_Refresco <- data.frame(panel_pivote = unique(df_panelesRefresco_Hijos$panel_pivote))
+```
+
+
+
+Traemos la asignación del tamaño de muestra  trimestral por estrato: 
+
+
+```{r}
+setwd("output/Resultados/2.AsignacionTamMuestra15Paneles_NumeroAleaPareto")
+df_asignacionMuestra15paneles_Trimestre <- readRDS("df_asignacionMuestra15paneles_Trimestre.Rds") # 
+```
+
+Leemos el número total de UPMs que se seleccionan enc ada UPM de refuerzo (tanto pivotal) como no pivotal:
+
+```{r}
+setwd("output/Resultados/3.AsignacionTamMuestraUPMsEnCadaPanel")
+df_asignaNumUPMPanelRefrescoXEstrato <- readRDS("df_asignaNumUPMPanelRefrescoXEstrato.Rds")
+```
+
+ A tibble: 1,140 × 3
+   estrato                 panel_refresco n_UPMsXPanel
+   <chr>                   <chr>                 <dbl>
+ 1 111 Central Urbano Bajo A09                      21
+ 2 111 Central Urbano Bajo A10                      21
+ 3 111 Central Urbano Bajo A11                      21
+ 4 111 Central Urbano Bajo A12                      21
+ 5 111 Central Urbano Bajo B06                      21
+ 6 111 Central Urbano Bajo B07                      21
+ 7 111 Central Urbano Bajo B08                      21
+ 8 111 Central Urbano Bajo B09                      21
+ 9 111 Central Urbano Bajo B10                      21
+10 111 Central Urbano Bajo B11                      21
+
+
+
+Se calcula el tamaño de muestra de UPMs de refuerzo en cada UPM para poderlas seleccionar a partir del algoritmo de Pareto, traemos los números de Pareto asignados:
+
+```{r}
+setwd("output/Resultados/2.AsignacionTamMuestra15Paneles_NumeroAleaPareto")
+df_numerosPareto <- readRDS("df_numerosPareto.Rds")
+```
+
+
+
+# 1. Calculo de número de UPMs de refuerzo
+
+Identitico las UPMs de refresco que son de refresco con una indicadora
+
+
+```{r}
+df_asignaNumUPMPanelRefrescoXEstrato <- df_asignaNumUPMPanelRefrescoXEstrato %>% left_join(df_pivote_Refresco %>% 
+                                                   rename(panel_refresco = panel_pivote) %>% 
+                                                     mutate(indica_pivote = 1), by = "panel_refresco") %>% 
+  mutate(indica_pivote = ifelse(is.na(indica_pivote), 0, indica_pivote))
+```
+
+# A tibble: 1,140 × 4
+   estrato                 panel_refresco n_UPMsXPanel indica_pivote
+   <chr>                   <chr>                 <dbl>         <dbl>
+ 1 111 Central Urbano Bajo A09                      21             1
+ 2 111 Central Urbano Bajo A10                      21             0
+ 3 111 Central Urbano Bajo A11                      21             0
+ 4 111 Central Urbano Bajo A12                      21             0
+ 5 111 Central Urbano Bajo B06                      21             1
+ 6 111 Central Urbano Bajo B07                      21             0
+ 7 111 Central Urbano Bajo B08                      21             0
+ 8 111 Central Urbano Bajo B09                      21             0
+ 9 111 Central Urbano Bajo B10                      21             0
+10 111 Central Urbano Bajo B11                      21             0
+
+
+Calculamos el total de UPMs de Refuerzo por estrato (basta con seleccionar las de pivote ya que las UPMs de refresco hijas son las mismas):
+
+```{r}
+df_nUPMRefresco <- df_asignaNumUPMPanelRefrescoXEstrato %>% 
+  filter(indica_pivote == 1) %>% group_by(estrato) %>% 
+  summarise(n_upmRefresco = sum(n_UPMsXPanel)) %>% arrange(estrato)
+```
+
+
+Construimos una tabla acá que tiene el tamaño de muestra de UPMs por región y las que se requieren renovar:
+
+```{r}
+df_asignacionMuestra15paneles_Trimestre <- df_asignacionMuestra15paneles_Trimestre %>% 
+  left_join(df_nUPMRefresco, by = "estrato")
+```
+
+
+
+# Seleccionar muestra maestra de UPMs muestra maestra y de refuezo (refresco)
+
+```{r}
+df_tamMuestraMaestraRefrescosUPM <- df_asignacionMuestra15paneles_Trimestre %>% select(estrato, nI_h,  n_upmRefresco)
+```
+
+
+
+Seleccionamos en cada estrato las UPM's:
+
+```{r}
+vctr_estratos <- unique(df_asignacionMuestra15paneles_Trimestre$estrato) %>% sort()
+num_estratos <- length(vctr_estratos)
+```
+
+```{r}
+set.seed(30092024)
+semillas <- sample(1:1000, num_estratos)
+```
+
+
+```{r}
+df_numerosPareto <- df_numerosPareto %>% arrange(aleatorio_pareto)
+
+lst_marcoSeleccion <- vector(mode = "list", length = length(vctr_estratos))
+for(i in 1:length(vctr_estratos)){
+  temp_nI_h <- df_tamMuestraMaestraRefrescosUPM$nI_h[i]
+  temp_n_upmRefresco <- df_tamMuestraMaestraRefrescosUPM$n_upmRefresco[i]
+  
+  temp_alea <- df_numerosPareto %>% filter(estrato == vctr_estratos[i]) %>% arrange()
+  
+  temp_alea$indica_seleccion <- 0
+  temp_alea$indica_seleccion[1:(temp_nI_h + temp_n_upmRefresco)] <- 1
+  
+  # Luego para que las de refresco no se vean afectadas por la medida de tamaño y queden en la cola,
+  # se seleccionan aleatoriamente entre los ceros 
+  
+  set.seed(semillas[i])
+  temp_alea$alea_selRefresco <- runif(nrow(temp_alea))
+  temp_alea <- temp_alea %>% arrange(alea_selRefresco)
+  
+  temp_alea[temp_alea$indica_seleccion ==1 ,]$indica_seleccion[1:temp_n_upmRefresco] <- 2 
+
+  lst_marcoSeleccion[[i]] <- temp_alea
+  
+}
+rm(temp_alea)
+rm(temp_nI_h)
+rm(temp_n_upmRefresco)
+
+df_marcoSeleccion <- bind_rows(lst_marcoSeleccion)
+df_marcoSeleccion <- df_marcoSeleccion %>% arrange(estrato, upm)
+```
+
+
+```{r}
+table(df_marcoSeleccion$indica_seleccion)
+```
+
+
+Ya quedaron seleccionadas tanto las UPMs de la muestra maestra como las de refresco, el siguiente paso será asignar
+cada uno de las UPMs a los paneles iniciales como de refuerzo
+
+```{r}
+setwd("output/Resultados/4.SeleccionUPMMuestraMaestraRefresco")
+saveRDS(df_marcoSeleccion, "df_marcoSeleccion.Rds")
+```
+
+
+```{r}
+
+```
+
