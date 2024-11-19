@@ -240,8 +240,9 @@ for(i in 1:length(vctr_estratos)){
     filter(estrato == vctr_estratos[i])
   
     # vctr_paneles_refresco <- c("C03", "J05", "L06", "D08", "F09", "M11", "E13")
-    # sustituye: C02, D07, E12, F08m J04, L05, M10, 
-    # Traerse el mismo tamaño de UPMs en el panel A9 que en el A8
+    # sustituye: C02, D07, E12, F08 J04, L05, M10, 
+    # Muy clave el orden en las lineas siguientes:
+    
     n_rep_C02 <- nrow(df_upm_EnpanelesNoRefresco %>% filter(estrato == vctr_estratos[i] & 
                                              panel == "C02"))
      
@@ -410,6 +411,17 @@ saveRDS(df_entregaMuestraCostaRica, "EntregaMuestraCostaRica6oTrimestres.Rds")
 
 
 #df_upmEnpaneles_consolidado # Opcional salvar
+```
+
+
+```{r}
+comprobacion <- table(df_upmEnpaneles_consolidado$panel) %>% as.data.frame() 
+names(comprobacion) <- c("Panel", "NumUPMs")
+```
+
+```{r}
+setwd("output/Resultados/5.AsignacionUPMaPanelesPrincipalesRefuerzo")
+write_xlsx(comprobacion, "comprobacionNumUPMPanelIgual.xlsx")
 ```
 
 

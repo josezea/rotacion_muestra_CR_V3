@@ -89,6 +89,17 @@ write_xlsx(consulta_numUPMSXPanel, "2.Num_UPMSEnPanel_estrato_Largo.xlsx")
 ```
 
 
+Matriz rotapanel:
+
+```{r}
+consulta_numUPMSXPanelMatriz <- reshape2::dcast(data = consulta_numUPMSXPanel, estrato ~ panel, value.var = "n_UPMsXpanel")
+```
+
+```{r}
+setwd("output/Resultados/6.Descriptivos/")
+write_xlsx(consulta_numUPMSXPanelMatriz, "2.MATRIZ_Num_UPMSEnPanel_estrato.xlsx")
+```
+
 
 
 ```{r}
@@ -335,6 +346,7 @@ write_xlsx(ResumenXMes, "4.MatrizEstratoMes.xlsx")
 
 ```
 
+Matriz Rotapanel Trimestral
 
 ```{r}
 

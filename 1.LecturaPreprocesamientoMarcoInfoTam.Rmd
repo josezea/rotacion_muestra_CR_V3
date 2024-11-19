@@ -28,7 +28,7 @@ df_marco <- janitor::clean_names(df_marco)
 
 ```{r}
 setwd("data")
-df_asignacionMuestra <- read_excel("Asignacion_estrato_sep_26_2024.xlsx")
+df_asignacionMuestra <- read_excel("Asignacion_estrato_nov_19_2024.xlsx", sheet = "escenario")
 df_asignacionMuestra <- janitor::clean_names(df_asignacionMuestra)
 ```
 
