@@ -1,0 +1,39 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-12-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+
+setwd("output/Resultados/2.AsignacionTamMuestra15Paneles_NumeroAleaPareto")
+df_numerosPareto <- df_numerosPareto %>% arrange(estrato, aleatorio_pareto)
+
+# Codigos UPM a Reemplazar
+upms_reemplazar <- c(70404015, 60704013, 70102032)
+df_reemplazo <- df_numerosPareto %>% filter(upm  %in% upms_reemplazar)
+
+
+# Remplazo 70404015
+df_candidatosReemplazo70404015 <- filter(df_numerosPareto, estrato == "521 Huetar Caribe Rural Bajo")
+posicon_70404015 <- which(df_candidatosReemplazo70404015$upm == 70404015)
+df_reemplazo70404015 <- df_candidatosReemplazo70404015[posicon_70404015 + 1,]
+
+# Remplazo 70102032
+df_candidatosReemplazo70102032 <- filter(df_numerosPareto, estrato == "521 Huetar Caribe Rural Bajo")
+posicon_70102032 <- which(df_candidatosReemplazo70102032$upm == 70102032)
+df_reemplazo70102032 <- df_candidatosReemplazo70102032[posicon_70102032 + 1,]
+
+
+# Remplazo 60704013
+df_candidatosReemplazo60704013 <- filter(df_numerosPareto, estrato == "422 Brunca Rural Medio")
+posicon_60704013 <- which(df_candidatosReemplazo60704013$upm == 60704013)
+df_reemplazo60704013 <- df_candidatosReemplazo60704013[posicon_60704013 + 1,]
+
+```
+
