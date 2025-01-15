@@ -1,0 +1,185 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-12-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+```
+
+
+Cargamos la muestra:
+
+```{r}
+setwd("output/Resultados/5.AsignacionUPMaPanelesPrincipalesRefuerzo")
+dir()
+datos_muestra <- readRDS("EntregaMuestraCostaRica6oTrimestres.Rds")
+```
+
+
+
+Revisar UPMs ya seleccionados:
+
+```{r}
+upms_seleccionados <- unique(datos_muestra$upm) 
+```
+
+```{r}
+length(upms_seleccionados)
+```
+
+
+
+Leemos los números de Paretos:
+
+```{r}
+setwd("output/Resultados/2.AsignacionTamMuestra15Paneles_NumeroAleaPareto")
+df_numerosPareto <- readRDS("df_numerosPareto.Rds")
+df_numerosPareto <- df_numerosPareto %>% arrange(estrato, aleatorio_pareto)
+```
+
+
+
+Las siguientes son las UPMs a reemplazar:
+
+```{r}
+# Codigos UPM a Reemplazar
+upms_reemplazar <- c(70404015, 60704013, 70102032)
+```
+
+
+
+```{r}
+df_reemplazo <- df_numerosPareto %>% filter(upm  %in% upms_reemplazar)
+```
+
+
+# Remplazo 70404015
+
+```{r}
+df_candidatosReemplazo70404015 <- filter(df_numerosPareto, estrato == "521 Huetar Caribe Rural Bajo")
+posicion_70404015 <- which(df_candidatosReemplazo70404015$upm == 70404015)
+```
+
+Revisamos la siguiente posición no seleccionada:
+
+```{r}
+df_reemplazo70404015 <- df_candidatosReemplazo70404015[posicion_70404015 + 1,]
+df_reemplazo70404015$upm %in% upms_seleccionados
+```
+
+Buscamos el siguiente candidato:
+
+
+
+
+```{r}
+revisaEsta <- TRUE
+i = 1
+
+while(revisaEsta) {
+df_reemplazo70404015 <- df_candidatosReemplazo70404015[posicion_70404015 + i,]
+revisaEsta <- df_reemplazo70404015$upm %in% upms_seleccionados
+posicion_reemplazo <- posicion_70404015 + i
+i = i + 1
+}
+cat(i)
+```
+
+
+Colocamos el primer valor encontrado para reemplazar:
+
+```{r}
+df_reemplazo70404015 <- df_candidatosReemplazo70404015[posicion_70404015 + i,]
+df_reemplazo70404015
+```
+
+
+Revisamos si ya se seleccionó:
+
+```{r}
+df_reemplazo70404015$upm %in% upms_seleccionados
+```
+
+
+
+
+
+# Remplazo 70102032
+
+```{r}
+df_candidatosReemplazo70102032 <- filter(df_numerosPareto, estrato == "521 Huetar Caribe Rural Bajo")
+posicion_70102032 <- which(df_candidatosReemplazo70102032$upm == 70102032)
+df_reemplazo70102032 <- df_candidatosReemplazo70102032[posicion_70102032 + 1,]
+```
+
+Revisamos si esa UPM ya fue previamente seleccionada:
+
+```{r}
+df_reemplazo70102032$upm %in% upms_seleccionados
+```
+
+
+```{r}
+df_reemplazo70102032
+```
+
+Por lo tanto se puede reemplazar por 70102032
+
+ estrato                           upm viviendas_preliminares aleatorio_pareto
+  <chr>                           <dbl>                  <dbl>            <dbl>
+1 521 Huetar Caribe Rural Bajo 70102008                    256             2.14
+
+
+
+
+
+# Reemplazo 60704013
+
+```{r}
+df_numerosPareto %>% filter(upm == "60704013")
+```
+
+
+```{r}
+df_candidatosReemplazo60704013 <- filter(df_numerosPareto, estrato == "422 Brunca Rural Medio")
+posicion_60704013 <- which(df_candidatosReemplazo60704013$upm == 60704013)
+df_reemplazo60704013 <- df_candidatosReemplazo60704013[posicion_60704013 + 1,]
+```
+
+
+Revisamos si esa UPM ya fue previamente seleccionada:
+
+```{r}
+df_reemplazo60704013$upm %in% upms_seleccionados
+```
+
+Realizamos el procedimiento para encontrar el siguiente:
+
+```{r}
+revisaEsta <- TRUE
+i = 1
+
+while(revisaEsta) {
+df_reemplazo60704013 <- df_candidatosReemplazo60704013[posicion_60704013 + i,]
+revisaEsta <- df_reemplazo60704013$upm %in% upms_seleccionados
+posicion_reemplazo <- posicion_60704013 + i
+i = i + 1
+}
+cat(i)
+```
+
+
+Colocamos el primer valor encontrado para reemplazar:
+
+```{r}
+df_reemplazo60704013 <- df_candidatosReemplazo60704013[posicion_60704013 + i,]
+df_reemplazo60704013
+```
+
+
