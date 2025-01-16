@@ -1,0 +1,155 @@
+---
+title: "Reemplazos"
+output: html_document
+date: "2024-12-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+```
+
+
+Cargamos la muestra:
+
+```{r}
+setwd("output/Resultados/5.AsignacionUPMaPanelesPrincipalesRefuerzo")
+datos_muestra <- readRDS("EntregaMuestraCostaRica6oTrimestres.Rds")
+```
+
+
+
+Revisar UPMs ya seleccionados:
+
+```{r}
+upms_seleccionados <- unique(datos_muestra$upm) 
+```
+
+```{r}
+length(upms_seleccionados)
+```
+
+
+
+Leemos los números de Paretos:
+
+```{r}
+setwd("output/Resultados/2.AsignacionTamMuestra15Paneles_NumeroAleaPareto")
+df_numerosPareto <- readRDS("df_numerosPareto.Rds")
+df_numerosPareto <- df_numerosPareto %>% arrange(estrato, aleatorio_pareto)
+```
+
+Marcamos las UPM seleccionada:
+
+```{r}
+df_numerosPareto$indica_muestra <- as.integer(df_numerosPareto$upm %in% 
+                                                upms_seleccionados)
+```
+
+```{r}
+table(df_numerosPareto$indica_muestra)
+```
+
+
+Marquemos las UPMs que se desean reemplezar
+
+```{r}
+# Codigos UPM a Reemplazar
+upms_reemplazar <- c(70404015, 60704013, 70102032)
+```
+
+
+```{r}
+df_numerosPareto$indica_UPMsAreemplazar <- as.integer(df_numerosPareto$upm %in% 
+                                                upms_reemplazar)
+```
+
+
+Ahora filtramos las zonas donde se encuentran estas tres UPMs
+
+```{r}
+zonas_UPMReemplazar <- df_numerosPareto %>% 
+  filter(indica_UPMsAreemplazar == 1) %>% 
+  select(estrato)
+```
+
+Restringimos los números de Pareto a las zonas donde se requieren hacer reemplazos:
+
+```{r}
+df_numerosPareto_estratos <- df_numerosPareto %>% 
+  filter(estrato %in% zonas_UPMReemplazar$estrato)
+```
+
+
+
+
+Colocar una dummy de las UPMs potenciales a reemplazar y tambien los grupos que son conformados de manera
+natural por los pivotes (1's) que corresponden a los reemplazos. Dejar los grupos 1 a 3:
+
+```{r}
+df_numerosPareto_estratos <- df_numerosPareto_estratos %>% 
+  mutate(indica_potencial = as.integer(indica_muestra == 0 & indica_UPMsAreemplazar == 0))
+```
+
+Las UPMs a reemplazar son:
+
+```{r}
+which(df_numerosPareto_estratos$indica_UPMsAreemplazar == 1)
+```
+
+
+En el caso del estrato 422 Brunca Rural Medio se requiere reemplazar la UPM la UPM 60704013 (ubicada en la posición 1), se filtran las UPMs potenciales y el primer valor a reemplazar es la UPM 11911003 (ubicada en la posición 133)
+
+
+En 521 Huetar Caribe Rural Bajo se requieren reemplazar dos UPMs, se dejaran las UPMs potenciales
+a reemplazar (que no han sido previamente seleccionadas) y se generará un consecutivo.
+El primer valor del consecutivo corresponde a la UPM 70404015 (ubicada en la posición 246) se reemplazaría
+por el primer consecutivo.
+El segunda valor segundo valor a reemplazar corresponde a la UPM 70102032 (ubicada en la posición 343), se reemplazara con el segundo consecutivo. 
+
+Nota: En caso de que estos valores no sean  reemplazos  fáciles de visitar el consecutivo 3 de Huetar Caribe Rural correspondiría al reemplazo de la UPM 70404015 y el consecutivo 4 de Huetar Caribe Rural correspondería al reemplazo de la UPM 70102032 y así sucesivamente (los consecutivos impares pares se destinarían para la UPM 70404015 y los pares para UPM 70102032)
+
+
+
+```{r}
+df_candidatosReemplazo <- df_numerosPareto_estratos %>% filter(indica_potencial == 1) %>% 
+    group_by(estrato) %>% mutate(consecutivo = row_number()) %>% ungroup()
+```
+
+
+Seleccionamos las UPMs potenciales para los reemplazos
+
+```{r}
+muestra_reemplazo <- df_candidatosReemplazo %>% filter(indica_potencial == 1)
+```
+
+Elegimos los reemplazos: el consecutivo 1 en 422 Brunca Rural Medio para la UPM 60704013 y los cosnecutivos 1 y 2 en 521 Huetar Caribe Rural Bajo para las UPMs 70404015 y 70102032 respectivamente
+
+
+```{r}
+muestra_reemplazo2 <- muestra_reemplazo %>% 
+  filter((estrato == "422 Brunca Rural Medio" & consecutivo == 1) |
+         (estrato == "521 Huetar Caribe Rural Bajo" & consecutivo %in% 1:2))  %>% 
+  rename(upm_reemplazo = upm)
+
+```
+
+Se obtiene el siguiente resultado:
+
+
+```{r}
+resultado <- cbind(df_numerosPareto_estratos %>% filter(indica_UPMsAreemplazar == 1) %>% 
+  select(estrato, upm) %>% 
+  rename(upmAreemplazar = upm), 
+  muestra_reemplazo2 %>% dplyr::select(upm_reemplazo)
+  )
+```
+
+
+```{r}
+resultado
+```
+
